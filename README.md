@@ -3,9 +3,14 @@ Unsyiah ETD crawler let you crawl [Unsyiah ETD](https://etd.unsyiah.ac.id) repos
 
 ## Usage
 ```
+Unsyiah ETD crawler, codename Cosmos
+Copyright (C) Thiekus 2019
+
 Usage of ./etdcrawl:
   -embargo int
     	Embargo flag (0 for fulltext)
+  -ignorecert
+    	Ignore TLS certificate errors
   -max int
     	Maximum content id (default 4294967295)
   -maxpage int

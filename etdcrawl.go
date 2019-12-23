@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -20,6 +21,7 @@ import (
 	"syscall"
 )
 
+/* Our metadata store in JSON */
 type DocumentInfo struct {
 	DocumentId string `json:"documentId"`
 	Title      string `json:"title"`
@@ -43,13 +45,14 @@ var (
 	minId       = 0
 	maxId       = 0xffffffff
 	withPdf     = true
+	ignoreCert  = false
 )
 
 var (
 	crawlCount    = 0
 	crawlCountMtx sync.Mutex
 	crawlDone     = false
-	crawlFetched  = make(map[string]bool)
+	crawlFetched  = make(map[string]bool) /* To avoid duplicate crawl */
 	crawlWg       sync.WaitGroup
 )
 
@@ -62,7 +65,11 @@ func isFileExists(filePath string) bool {
 
 func fetchData(urlPath string) ([]byte, error) {
 	log.Printf("Fetching from %s", urlPath)
-	resp, err := http.Get(urlPath)
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: ignoreCert},
+	}
+	client := &http.Client{Transport: tr}
+	resp, err := client.Get(urlPath)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +95,7 @@ func getDocumentIdFromUrl(urlPath string) (string, bool) {
 			return "", false
 		} else {
 			crawlFetched[id] = true
+			/* Don't repeat yourself */
 			if isFileExists(outDir + id + ".json") {
 				return "", false
 			}
@@ -166,7 +174,7 @@ func crawlDocument(docId string) {
 			Abstract:   abstract,
 			Document:   documentName,
 		}
-		/* Fetch real document */
+		/* Fetch real document, if available */
 		if withPdf && (documentName != "") {
 			pdf, err := fetchData(baseRepositoryUrl + documentName)
 			if err != nil {
@@ -206,6 +214,7 @@ func main() {
 	minIdPtr := flag.Int("min", minId, "Minimum content id (default 0)")
 	maxIdPtr := flag.Int("max", maxId, "Maximum content id")
 	withPdfPtr := flag.Bool("pdf", withPdf, "Fetch with full PDF document")
+	ignoreCertPtr := flag.Bool("ignorecert", ignoreCert, "Ignore TLS certificate errors")
 	/* Don't forget to parse */
 	flag.Parse()
 	/* Assign to global variables */
@@ -220,6 +229,7 @@ func main() {
 	minId = *minIdPtr
 	maxId = *maxIdPtr
 	withPdf = *withPdfPtr
+	ignoreCert = *ignoreCertPtr
 	/* CTRL+C Interrupt handler */
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -263,6 +273,7 @@ func main() {
 				}
 			}
 		}
+		/* We hate corrupt result, be patient until all done */
 		log.Print("Waiting for pending routines...")
 		crawlWg.Wait()
 	}
