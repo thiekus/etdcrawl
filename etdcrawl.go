@@ -19,6 +19,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 )
 
 /* Our metadata store in JSON */
@@ -263,6 +264,7 @@ func main() {
 	if useEmbargo {
 		q.Add("embargo", strconv.Itoa(embargoFlag))
 	}
+	startTime := time.Now()
 	for idx := pageIndex; idx <= maxPage; idx++ {
 		if crawlDone {
 			break
@@ -294,5 +296,6 @@ func main() {
 		log.Print("Waiting for pending routines...")
 		crawlWg.Wait()
 	}
-	log.Printf("Done, %d documents was fetched", crawlCount)
+	timeAfter := time.Since(startTime)
+	log.Printf("Done, %d documents was fetched since %v", crawlCount, timeAfter)
 }
