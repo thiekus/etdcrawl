@@ -6,21 +6,25 @@ Unsyiah ETD crawler let you crawl [Unsyiah ETD](https://etd.unsyiah.ac.id) repos
 Unsyiah ETD crawler, codename Cosmos
 Copyright (C) Thiekus 2019
 
-Usage of ./etdcrawl:
+Usage of D:\projects\etdcrawl\etdcrawl.exe:
   -embargo int
-    	Embargo flag (0 for fulltext)
+        Embargo flag (0 for fulltext)
   -ignorecert
-    	Ignore TLS certificate errors
+        Ignore TLS certificate errors
   -max int
-    	Maximum content id (default 4294967295)
+        Maximum content id (default 4294967295)
   -maxpage int
-    	Page number maximum (default 4294967295)
+        Page number maximum (default 4294967295)
   -min int
-    	Minimum content id (default 0)
+        Minimum content id (default 0)
   -outdir string
-    	Output directory
+        Output directory
   -page int
-    	Page number index start (default 1)
+        Page number index start (default 1)
   -pdf
-    	Fetch with full PDF document (default true)
+        Fetch with full PDF document (default true)
+  -skipempty
+        Ignore empty abstract document (default true)
+  -useembargo
+        Emit embargo flag (disabled by default)
 ```

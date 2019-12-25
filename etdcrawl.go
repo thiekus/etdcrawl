@@ -39,6 +39,7 @@ const (
 
 var (
 	outDir      = "./"
+	useEmbargo  = false
 	embargoFlag = 0
 	pageIndex   = 1
 	maxPage     = 0xffffffff
@@ -46,6 +47,7 @@ var (
 	maxId       = 0xffffffff
 	withPdf     = true
 	ignoreCert  = false
+	skipEmpty   = true
 )
 
 var (
@@ -158,6 +160,10 @@ func crawlDocument(docId string) {
 		if note := rootXml.SelectElement("note"); note != nil {
 			abstract = note.Text()
 		}
+		if (skipEmpty) && (abstract == "") {
+			log.Printf("Skipping document %d because abstract was empty!", docId)
+			return
+		}
 		dateTime := ""
 		if recordInfo := rootXml.SelectElement("recordInfo"); recordInfo != nil {
 			dateTime = recordInfo.SelectElement("recordCreationDate").Text()
@@ -175,14 +181,19 @@ func crawlDocument(docId string) {
 			Document:   documentName,
 		}
 		/* Fetch real document, if available */
-		if withPdf && (documentName != "") {
-			pdf, err := fetchData(baseRepositoryUrl + documentName)
-			if err != nil {
-				log.Printf("ERROR: Cannot fetch PDF for docId %s: %s", docId, err)
-				return
-			}
-			if err := ioutil.WriteFile(outDir+documentName, pdf, os.ModePerm); err != nil {
-				log.Printf("ERROR: Cannot write %s: %s", documentName, err)
+		if withPdf {
+			if documentName != "" {
+				pdf, err := fetchData(baseRepositoryUrl + documentName)
+				if err != nil {
+					log.Printf("ERROR: Cannot fetch PDF for docId %s: %s", docId, err)
+					return
+				}
+				if err := ioutil.WriteFile(outDir+documentName, pdf, os.ModePerm); err != nil {
+					log.Printf("ERROR: Cannot write %s: %s", documentName, err)
+					return
+				}
+			} else {
+				log.Printf("Skip for docId %s because no document found (use -pdf=false to include)", docId)
 				return
 			}
 		}
@@ -208,6 +219,7 @@ func main() {
 	fmt.Println("")
 	/* Commandline flags */
 	outDirPtr := flag.String("outdir", "", "Output directory")
+	useEmbargoPtr := flag.Bool("useembargo", useEmbargo, "Emit embargo flag (disabled by default)")
 	embargoFlagPtr := flag.Int("embargo", embargoFlag, "Embargo flag (0 for fulltext)")
 	pageIndexPtr := flag.Int("page", pageIndex, "Page number index start")
 	maxPagePtr := flag.Int("maxpage", maxPage, "Page number maximum")
@@ -215,6 +227,7 @@ func main() {
 	maxIdPtr := flag.Int("max", maxId, "Maximum content id")
 	withPdfPtr := flag.Bool("pdf", withPdf, "Fetch with full PDF document")
 	ignoreCertPtr := flag.Bool("ignorecert", ignoreCert, "Ignore TLS certificate errors")
+	skipEmptyPtr := flag.Bool("skipempty", skipEmpty, "Ignore empty abstract document")
 	/* Don't forget to parse */
 	flag.Parse()
 	/* Assign to global variables */
@@ -223,6 +236,7 @@ func main() {
 		log.Print("Error: output directory not specified!")
 		return
 	}
+	useEmbargo = *useEmbargoPtr
 	embargoFlag = *embargoFlagPtr
 	pageIndex = *pageIndexPtr
 	maxPage = *maxPagePtr
@@ -230,6 +244,7 @@ func main() {
 	maxId = *maxIdPtr
 	withPdf = *withPdfPtr
 	ignoreCert = *ignoreCertPtr
+	skipEmpty = *skipEmptyPtr
 	/* CTRL+C Interrupt handler */
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -245,7 +260,9 @@ func main() {
 		log.Fatal(err)
 	}
 	q := urlIndexBase.Query()
-	q.Add("embargo", strconv.Itoa(embargoFlag))
+	if useEmbargo {
+		q.Add("embargo", strconv.Itoa(embargoFlag))
+	}
 	for idx := pageIndex; idx <= maxPage; idx++ {
 		if crawlDone {
 			break
