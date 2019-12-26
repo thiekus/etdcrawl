@@ -76,7 +76,11 @@ func fetchData(urlPath string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func(){
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("WARNING: Error while closing HTTP body: %s", err)
+		}
+	}()
 	if resp.StatusCode != 200 {
 		return nil, errors.New("HTTP error " + strconv.Itoa(resp.StatusCode))
 	}
@@ -162,7 +166,7 @@ func crawlDocument(docId string) {
 			abstract = note.Text()
 		}
 		if (skipEmpty) && (abstract == "") {
-			log.Printf("Skipping document %d because abstract was empty!", docId)
+			log.Printf("Skipping document %s because abstract was empty!", docId)
 			return
 		}
 		dateTime := ""
