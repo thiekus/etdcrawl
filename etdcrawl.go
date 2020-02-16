@@ -80,6 +80,7 @@ func fetchData(urlPath string) ([]byte, error) {
 		if err := resp.Body.Close(); err != nil {
 			log.Printf("WARNING: Error while closing HTTP body: %s", err)
 		}
+		client.CloseIdleConnections()
 	}()
 	if resp.StatusCode != 200 {
 		return nil, errors.New("HTTP error " + strconv.Itoa(resp.StatusCode))
@@ -152,7 +153,16 @@ func crawlDocument(docId string) {
 			return
 		}
 		/* Retrieve xml metadata and store at json struct */
-		rootXml := doc.SelectElement("modsCollection").SelectElement("mods")
+		rootXmlRoot := doc.SelectElement("modsCollection")
+		if rootXmlRoot == nil {
+			log.Printf("ERROR: modsCollection for docId %s is not exists", docId)
+			return
+		}
+		rootXml := rootXmlRoot.SelectElement("mods")
+		if rootXml == nil {
+			log.Printf("ERROR: rootXml (mods) for docId %s is not exists", docId)
+			return
+		}
 		title := ""
 		if titleInfo := rootXml.SelectElement("titleInfo"); titleInfo != nil {
 			title = titleInfo.SelectElement("title").Text()
