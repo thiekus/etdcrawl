@@ -137,8 +137,8 @@ func parseIndexPage(pageData []byte) ([]string, error) {
 }
 
 func crawlDocument(docId string) {
+	crawlWg.Add(1)
 	go func(docId string) {
-		crawlWg.Add(1)
 		defer crawlWg.Done()
 		/* Fetch Slims metadata */
 		metadataUrl := "https://etd.unsyiah.ac.id/index.php?p=show_detail&inXML=true&id=" + docId
